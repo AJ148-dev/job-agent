@@ -7,6 +7,8 @@ import httpx
 from jobagent.models import JobExtraction, LLMMatch, RawPost
 
 TELEGRAM_LIMIT = 4096
+EXCERPT_CHARS = 500  # keeps every job block well under TELEGRAM_LIMIT
+BLOCK_SEP = "\n\n"
 SEND_INTERVAL_S = 1.0  # Telegram allows roughly one message per second per chat.
 
 
@@ -14,36 +16,53 @@ class Notifier(Protocol):
     def send(self, text: str) -> None: ...
 
 
-def format_job(post: RawPost, job: JobExtraction, match: LLMMatch) -> str:
+def format_job(number: int, post: RawPost, job: JobExtraction, match: LLMMatch) -> str:
     title = escape(job.role or "Unknown role")
     company = escape(job.company or post.author or "Unknown company")
-    lines = [f"<b>{title}</b> at <b>{company}</b>", f"Score: <b>{match.score}/100</b>"]
+    lines = [f"<b>{number}. {title}</b> at <b>{company}</b> ({match.score}/100)"]
 
-    where = ", ".join(x for x in (job.location, job.work_mode if job.work_mode != "unknown" else None) if x)
-    if where:
-        lines.append(f"Location: {escape(where)}")
+    details = [x for x in (job.location, job.work_mode if job.work_mode != "unknown" else None) if x]
     years = job.min_years_experience
-    lines.append(f"Experience: {f'{years}+ yrs' if years is not None else 'not mentioned'}")
-    if job.summary:
-        lines.append(f"\n{escape(job.summary)}")
-    lines.append(f"\n<i>Why:</i> {escape(match.reasons)}")
-    if match.matched_skills:
-        lines.append(f"<i>Matched:</i> {escape(', '.join(match.matched_skills))}")
-    if match.missing_skills:
-        lines.append(f"<i>Missing:</i> {escape(', '.join(match.missing_skills))}")
+    details.append(f"Experience: {f'{years}+ yrs' if years is not None else 'not mentioned'}")
+    lines.append(escape(" | ".join(details)))
+
+    excerpt = post.text if len(post.text) <= EXCERPT_CHARS else post.text[:EXCERPT_CHARS].rstrip() + "…"
+    lines.append(f"<blockquote>{escape(excerpt)}</blockquote>")
+
     links = []
     if post.url:
-        label = "Post" if "/feed/update/" in post.url else "Author"
+        label = "Open post" if "/feed/update/" in post.url else "Author profile"
         links.append(f'<a href="{escape(post.url, quote=True)}">{label}</a>')
     if job.apply_url:
         links.append(f'<a href="{escape(job.apply_url, quote=True)}">Apply</a>')
     if job.contact_email:
         links.append(escape(job.contact_email))
     if links:
-        lines.append("\n" + " | ".join(links))
+        lines.append(" | ".join(links))
+    return "\n".join(lines)
 
-    text = "\n".join(lines)
-    return text if len(text) <= TELEGRAM_LIMIT else text[: TELEGRAM_LIMIT - 1] + "…"
+
+def build_digest(
+    jobs: list[tuple[int, RawPost, JobExtraction, LLMMatch]],
+) -> list[tuple[str, list[int]]]:
+    """Pack all jobs of a run into as few messages as Telegram's size limit allows.
+
+    Returns (message, job_ids_in_message) pairs; a job is never split across messages.
+    """
+    if not jobs:
+        return []
+    messages: list[tuple[str, list[int]]] = []
+    text, ids = f"<b>{len(jobs)} new job{'s' if len(jobs) > 1 else ''} from your feed</b>", []
+    for number, (job_id, post, job, match) in enumerate(jobs, 1):
+        block = format_job(number, post, job, match)
+        if ids and len(text) + len(BLOCK_SEP) + len(block) > TELEGRAM_LIMIT:
+            messages.append((text, ids))
+            text, ids = block, []
+        else:
+            text = f"{text}{BLOCK_SEP}{block}"
+        ids.append(job_id)
+    messages.append((text, ids))
+    return messages
 
 
 class TelegramNotifier:

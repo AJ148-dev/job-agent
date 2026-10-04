@@ -3,11 +3,13 @@ import random
 import time
 from pathlib import Path
 
-from playwright.sync_api import BrowserContext, Page, sync_playwright
+from playwright.sync_api import BrowserContext, Page, Response, sync_playwright
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from jobagent.models import RawPost
-from jobagent.sources.linkedin_parse import KEY_JS, POST_SELECTOR, ROW_JS, SEE_MORE_SELECTOR, parse_post
+from jobagent.sources.linkedin_parse import (
+    KEY_JS, POST_SELECTOR, ROW_JS, SEE_MORE_SELECTOR, parse_post, post_url, token_urns,
+)
 
 log = logging.getLogger(__name__)
 
@@ -23,6 +25,15 @@ class NotLoggedInError(RuntimeError):
 
 def _pause(low: float = 1.5, high: float = 4.0) -> None:
     time.sleep(random.uniform(low, high))
+
+
+def _record_urns(resp: Response, urns: dict[str, str]) -> None:
+    if "linkedin.com" not in resp.url or resp.request.resource_type not in ("document", "fetch", "xhr"):
+        return
+    try:
+        urns.update(token_urns(resp.text()))
+    except Exception:  # redirects, aborted requests and binary bodies have no usable text
+        pass
 
 
 class LinkedInSource:
@@ -64,13 +75,20 @@ class LinkedInSource:
             ctx = self._open(p)
             try:
                 page = ctx.pages[0] if ctx.pages else ctx.new_page()
+                urns: dict[str, str] = {}
+                page.on("response", lambda resp: _record_urns(resp, urns))
                 page.goto(FEED_URL, wait_until="domcontentloaded")
                 _pause(3, 6)
                 if any(s in page.url for s in ("/login", "/authwall", "/checkpoint", "/uas/")):
                     raise NotLoggedInError("LinkedIn session expired. Run: jobagent login")
-                return self._collect(page, limit)
+                posts = self._collect(page, limit)
             finally:
                 ctx.close()
+        for post in posts:
+            if urn := urns.get(post.external_id):
+                post.url = post_url(urn)
+        log.info("LinkedIn: post links found for %d of %d posts", sum(p.external_id in urns for p in posts), len(posts))
+        return posts
 
     def _collect(self, page: Page, limit: int) -> list[RawPost]:
         posts: dict[str, RawPost] = {}

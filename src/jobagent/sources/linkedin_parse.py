@@ -21,8 +21,22 @@ KEY_JS = "e => (e.closest('[componentkey*=\"FeedType_\"]') || e).getAttribute('c
 
 TOKEN_RE = re.compile(r"(?:expanded|update-card-focus)(.+?)FeedType_")
 ACTIVITY_RE = re.compile(r"activity:(\d{15,})")
+# In the feed's network payloads each post's state block names its token, then its URN.
+TOKEN_URN_RE = re.compile(
+    r"TranslationState-null([A-Za-z0-9_-]{20,}).{0,600}?reactionState-(urn:li:(?:activity|ugcPost|share):\d+)",
+    re.DOTALL,
+)
 AUTHOR_LABEL_PREFIX = "Open control menu for post by "
 TRAILING_MORE_RE = re.compile(r"\s*…\s*(more)?\s*$", re.IGNORECASE)
+
+
+def post_url(urn: str) -> str:
+    return f"https://www.linkedin.com/feed/update/{urn}/"
+
+
+def token_urns(payload: str) -> dict[str, str]:
+    """Map post tokens (RawPost.external_id) to post URNs found in a feed network response."""
+    return {m.group(1): m.group(2) for m in TOKEN_URN_RE.finditer(payload)}
 
 
 def parse_post(html: str) -> RawPost | None:
@@ -57,11 +71,11 @@ def parse_post(html: str) -> RawPost | None:
     if not author and actor:
         author = actor.get_text(" ", strip=True).split("•")[0].strip() or None
 
-    # The post URN only appears inside comment ids, so it's missing on posts without
-    # visible comments; then link the author instead.
+    # In the DOM the post URN only appears inside comment ids. LinkedInSource replaces this
+    # with the URN from network payloads when it can; the author profile is the last resort.
     activity = ACTIVITY_RE.search(html)
     if activity:
-        url = f"https://www.linkedin.com/feed/update/urn:li:activity:{activity.group(1)}/"
+        url = post_url(f"urn:li:activity:{activity.group(1)}")
     else:
         url = actor.get("href") if actor else None
 

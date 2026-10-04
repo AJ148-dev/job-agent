@@ -5,7 +5,7 @@ from jobagent.config import Profile
 from jobagent.llm.ollama import LLM
 from jobagent.llm.tasks import extract_job, judge_match
 from jobagent.matching import excluded_keyword, passes_prefilter, too_much_experience
-from jobagent.notify.telegram import Notifier, format_job
+from jobagent.notify.telegram import Notifier, build_digest
 from jobagent.sources.base import Source
 from jobagent.storage import Storage
 
@@ -81,19 +81,19 @@ def run_pipeline(
             stats.jobs += 1
             log.info("Job: %s at %s -> score %d", job.role, job.company, match.score)
 
-    for job_id, post, job, match in store.pending_notifications(profile.min_score):
-        message = format_job(post, job, match)
+    for message, job_ids in build_digest(store.pending_notifications(profile.min_score)):
         if notifier is None:
             log.info("[dry run] would send:\n%s", message)
             continue
         try:
             notifier.send(message)
         except Exception:
-            log.exception("Telegram send failed for job %d; will retry next run", job_id)
+            log.exception("Telegram send failed for %d jobs; will retry next run", len(job_ids))
             stats.errors += 1
             continue
-        store.mark_notified(job_id)
-        stats.notified += 1
+        for job_id in job_ids:
+            store.mark_notified(job_id)
+        stats.notified += len(job_ids)
 
     log.info("Run finished: %s", stats)
     return stats
