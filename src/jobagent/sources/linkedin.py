@@ -4,9 +4,10 @@ import time
 from pathlib import Path
 
 from playwright.sync_api import BrowserContext, Page, sync_playwright
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from jobagent.models import RawPost
-from jobagent.sources.linkedin_parse import POST_SELECTOR, SEE_MORE_SELECTOR, parse_post
+from jobagent.sources.linkedin_parse import KEY_JS, POST_SELECTOR, ROW_JS, SEE_MORE_SELECTOR, parse_post
 
 log = logging.getLogger(__name__)
 
@@ -42,16 +43,21 @@ class LinkedInSource:
             viewport={"width": 1280, "height": 900},
         )
 
-    def login(self) -> None:
+    def login(self, timeout_s: int = 600) -> None:
+        """Open LinkedIn and wait until the user has logged in and reached the feed."""
         with sync_playwright() as p:
             ctx = self._open(p)
-            page = ctx.pages[0] if ctx.pages else ctx.new_page()
-            page.goto(LOGIN_URL)
-            input("Log in to LinkedIn in the opened browser, then press Enter here... ")
-            logged_in = not any(s in page.url for s in ("/login", "/checkpoint", "/uas/"))
-            ctx.close()
-        if not logged_in:
-            raise NotLoggedInError("Still on the login page; session not saved.")
+            try:
+                page = ctx.pages[0] if ctx.pages else ctx.new_page()
+                page.goto(LOGIN_URL)
+                log.info("Log in to LinkedIn in the opened browser (waiting up to %ds)...", timeout_s)
+                try:
+                    page.wait_for_url("**/feed/**", timeout=timeout_s * 1000)
+                except PlaywrightTimeoutError:
+                    raise NotLoggedInError("Did not reach the LinkedIn feed in time; session not saved.")
+                _pause(3, 5)
+            finally:
+                ctx.close()
 
     def fetch(self, limit: int) -> list[RawPost]:
         with sync_playwright() as p:
@@ -74,7 +80,7 @@ class LinkedInSource:
         for _ in range(MAX_SCROLLS):
             before = len(posts)
             for el in page.query_selector_all(POST_SELECTOR):
-                key = el.get_attribute("data-urn") or el.get_attribute("data-id") or ""
+                key = el.evaluate(KEY_JS)
                 seen_containers.add(key)
                 if key in done:
                     continue
@@ -83,7 +89,7 @@ class LinkedInSource:
                     btn.click()
                     _pause(0.4, 1.2)
                 # Unparsed containers (e.g. text not rendered yet) are retried next scroll.
-                if post := parse_post(el.evaluate("e => e.outerHTML")):
+                if post := parse_post(el.evaluate(ROW_JS)):
                     done.add(key)
                     posts.setdefault(post.external_id, post)
             if len(posts) >= limit:

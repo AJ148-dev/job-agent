@@ -8,7 +8,7 @@ from jobagent.config import Settings, load_profile
 from jobagent.llm.ollama import OllamaClient
 from jobagent.notify.telegram import TelegramNotifier
 from jobagent.pipeline import RunStats, run_pipeline
-from jobagent.sources.linkedin import LinkedInSource
+from jobagent.sources.linkedin import LinkedInSource, NotLoggedInError
 from jobagent.storage import Storage
 
 MIN_INTERVAL_HOURS = 6.0  # Protects the LinkedIn account from looking automated.
@@ -46,7 +46,11 @@ def login() -> None:
     """Open the browser so you can log in to LinkedIn once; the session is saved."""
     settings = Settings()
     _setup_logging(settings)
-    _linkedin(settings).login()
+    try:
+        _linkedin(settings).login()
+    except NotLoggedInError as e:
+        typer.echo(f"Login failed: {e}", err=True)
+        raise typer.Exit(1)
     typer.echo("Session saved.")
 
 

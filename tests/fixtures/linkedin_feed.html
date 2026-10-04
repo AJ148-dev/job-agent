@@ -1,30 +1,52 @@
-<!-- Hand-written from LinkedIn's known feed classes. Replace with a real capture
-     (data/debug/linkedin_feed.html) if LinkedIn changes its markup. -->
+<!-- Structure copied from a real feed capture (Oct 2026, obfuscated-class layout) with
+     invented people and text. Refresh from data/debug/linkedin_feed.html if LinkedIn changes. -->
 <html><body>
-<div class="feed-shared-update-v2" data-urn="urn:li:activity:7100000000000000001">
-  <div class="update-components-actor">
-    <span class="update-components-actor__title"><span aria-hidden="true">Priya Sharma</span><span class="visually-hidden">Priya Sharma</span></span>
-    <span class="update-components-actor__sub-description"><span aria-hidden="true">2h •</span></span>
+<div role="list">
+
+<!-- 1: hiring post, no comments loaded, "… more" button, row key prefix "expanded" -->
+<div class="ckymvu" role="listitem" componentkey="expandedTOKENaaa111FeedType_MAIN_FEED_RELEVANCE">
+ <div id="expandedTOKENaaa111FeedType_MAIN_FEED_RELEVANCE" componentkey="expandedTOKENaaa111FeedType_MAIN_FEED_RELEVANCE">
+  <div class="ckya1p" data-view-name="feed-full-update" data-display-contents="true">
+   <h2 class="visually-hidden">Feed post</h2>
+   <a href="https://www.linkedin.com/in/neha-test/" data-view-name="feed-actor" componentkey="c1"><span>Neha Kapoor</span> <span>• 2nd</span></a>
+   <button aria-label="Open control menu for post by Neha Kapoor" data-view-name="feed-control-menu"></button>
+   <p data-view-name="feed-commentary" componentkey="c2"><span>We're hiring SDE-1 at <a data-view-name="feed-commentary" href="https://www.linkedin.com/company/acme/">Acme</a> Bengaluru!</span><br><br><span>C++ / Java, strong DSA. Apply: https://acme.dev/jobs/1</span><span>…</span><button type="button" data-testid="expandable-text-button" aria-hidden="true">more</button></p>
   </div>
-  <div class="feed-shared-update-v2__description">
-    <div class="update-components-text"><span dir="ltr">We're hiring a Backend Engineer (Python, FastAPI) in Bangalore!<br>2+ years. Apply: https://jobs.example.com/123</span></div>
-    <button class="feed-shared-inline-show-more-text__see-more-less-toggle">…see more</button>
-  </div>
+ </div>
 </div>
-<div class="feed-shared-update-v2" data-urn="urn:li:activity:7100000000000000002">
-  <div class="update-components-actor">
-    <span class="update-components-actor__title"><span aria-hidden="true">Acme Corp</span></span>
-    <span class="update-components-actor__sub-description"><span aria-hidden="true">Promoted</span></span>
+
+<!-- 2: promoted ad -->
+<div role="listitem" componentkey="expandedTOKENbbb222FeedType_MAIN_FEED_RELEVANCE">
+ <div componentkey="expandedTOKENbbb222FeedType_MAIN_FEED_RELEVANCE">
+  <div data-view-name="feed-full-update">
+   <a href="https://www.linkedin.com/company/adco/" data-view-name="feed-actor"><span>AdCo</span></a>
+   <span>12,000 followers</span><span>Promoted</span>
+   <p data-view-name="feed-commentary"><span>Grow your B2B revenue today.</span></p>
   </div>
-  <div class="update-components-text"><span dir="ltr">Try our new product today.</span></div>
+ </div>
 </div>
-<div class="feed-shared-update-v2" data-id="urn:li:activity:7100000000000000003">
-  <div class="update-components-actor">
-    <span class="update-components-actor__name"><span aria-hidden="true">Rahul Verma</span></span>
+
+<!-- 3: post with visible comments (carries the activity id), row key prefix "update-card-focus" -->
+<div role="listitem" componentkey="update-card-focusTOKENccc333FeedType_MAIN_FEED_RELEVANCE">
+ <div componentkey="expandedTOKENccc333FeedType_MAIN_FEED_RELEVANCE">
+  <div data-view-name="feed-full-update">
+   <a href="https://www.linkedin.com/in/arjun-test/" data-view-name="feed-actor"><span>Arjun Rao</span> <span>• 1st</span></a>
+   <button aria-label="Open control menu for post by Arjun Rao"></button>
+   <p data-view-name="feed-commentary"><span>Just got promoted to Senior Engineer at Globex!</span></p>
   </div>
-  <div class="update-components-text"><span dir="ltr">Thrilled to share I've started a new position at Globex! …more</span></div>
+  <div id="replaceableComment_urn:li:comment:(activity:7512422060573306880,7512434389822156800)">Congrats!</div>
+ </div>
 </div>
-<div class="feed-shared-update-v2" data-urn="urn:li:activity:7100000000000000004">
-  <div class="update-components-actor"><span class="update-components-actor__title"><span aria-hidden="true">Image only</span></span></div>
+
+<!-- 4: image-only post -->
+<div role="listitem" componentkey="update-card-focusTOKENddd444FeedType_MAIN_FEED_RELEVANCE">
+ <div componentkey="expandedTOKENddd444FeedType_MAIN_FEED_RELEVANCE">
+  <div data-view-name="feed-full-update">
+   <a href="https://www.linkedin.com/in/img-test/" data-view-name="feed-actor"><span>Image Only</span></a>
+   <div data-view-name="feed-update-image"></div>
+  </div>
+ </div>
+</div>
+
 </div>
 </body></html>

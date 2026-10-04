@@ -1,66 +1,68 @@
 """Turn one LinkedIn feed post's HTML into a RawPost.
 
-All LinkedIn DOM knowledge lives here and in the selectors below, so when LinkedIn changes
-its markup this is the only file to fix (and tests/fixtures/linkedin_feed.html to refresh).
+All LinkedIn DOM knowledge lives here, so when LinkedIn changes its markup this is the only
+file to fix (and tests/fixtures/linkedin_feed.html to refresh). Class names on the feed are
+obfuscated, so only data-view-name / componentkey / aria-label attributes are used.
 """
 
 import re
 
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup
 
 from jobagent.models import RawPost
 
 SOURCE = "linkedin"
 
-POST_SELECTOR = 'div[data-urn^="urn:li:activity:"], div[data-id^="urn:li:activity:"]'
-SEE_MORE_SELECTOR = "button.feed-shared-inline-show-more-text__see-more-less-toggle"
+POST_SELECTOR = '[data-view-name="feed-full-update"]'
+SEE_MORE_SELECTOR = 'button[data-testid="expandable-text-button"]'
+# Run in the browser on a POST_SELECTOR element: the row holding the post (and its comments).
+ROW_JS = "e => (e.closest('[role=\"listitem\"]') || e).outerHTML"
+KEY_JS = "e => (e.closest('[componentkey*=\"FeedType_\"]') || e).getAttribute('componentkey') || ''"
 
-TEXT_SELECTORS = [
-    ".update-components-text",
-    ".feed-shared-inline-show-more-text",
-    ".feed-shared-update-v2__description",
-]
-AUTHOR_SELECTORS = [
-    ".update-components-actor__title span[aria-hidden=true]",
-    ".update-components-actor__name span[aria-hidden=true]",
-    ".update-components-actor__title",
-]
-TIME_SELECTORS = [".update-components-actor__sub-description span[aria-hidden=true]"]
-
-URN_RE = re.compile(r"urn:li:activity:\d+")
-SEE_MORE_RE = re.compile(r"\s*…\s*(see more|more)\s*$", re.IGNORECASE)
-
-
-def _first_text(root: Tag, selectors: list[str]) -> str | None:
-    for sel in selectors:
-        el = root.select_one(sel)
-        if el and (text := el.get_text("\n", strip=True)):
-            return text
-    return None
+TOKEN_RE = re.compile(r"(?:expanded|update-card-focus)(.+?)FeedType_")
+ACTIVITY_RE = re.compile(r"activity:(\d{15,})")
+AUTHOR_LABEL_PREFIX = "Open control menu for post by "
+TRAILING_MORE_RE = re.compile(r"\s*…\s*(more)?\s*$", re.IGNORECASE)
 
 
 def parse_post(html: str) -> RawPost | None:
-    """Return None for posts we can't or shouldn't use (no URN, no text, promoted)."""
+    """Parse one feed row. Returns None for ads and posts without text."""
     soup = BeautifulSoup(html, "html.parser")
-    root = soup.find(attrs={"data-urn": URN_RE}) or soup.find(attrs={"data-id": URN_RE})
-    if root is None:
+    full = soup.select_one(POST_SELECTOR)
+    if full is None:
         return None
-    urn = URN_RE.search(root.get("data-urn") or root.get("data-id") or "").group(0)
-
-    posted_at = _first_text(root, TIME_SELECTORS)
-    if posted_at and "promoted" in posted_at.lower():
+    if soup.find(string=lambda s: s.strip() == "Promoted"):
         return None
 
-    text = _first_text(root, TEXT_SELECTORS)
+    keyed = soup.find(attrs={"componentkey": TOKEN_RE})
+    if keyed is None:
+        return None
+    token = TOKEN_RE.search(keyed["componentkey"]).group(1)
+
+    paragraphs = []
+    for p in full.select('p[data-view-name="feed-commentary"]'):
+        for button in p.find_all("button"):
+            button.decompose()
+        for br in p.find_all("br"):
+            br.replace_with("\n")
+        paragraphs.append(p.get_text(""))
+    text = TRAILING_MORE_RE.sub("", "\n".join(paragraphs)).strip()
     if not text:
         return None
-    text = SEE_MORE_RE.sub("", text).strip()
 
-    return RawPost(
-        source=SOURCE,
-        external_id=urn,
-        url=f"https://www.linkedin.com/feed/update/{urn}/",
-        author=_first_text(root, AUTHOR_SELECTORS),
-        posted_at=posted_at,
-        text=text,
-    )
+    author = None
+    if menu := soup.find(attrs={"aria-label": re.compile("^" + AUTHOR_LABEL_PREFIX)}):
+        author = menu["aria-label"].removeprefix(AUTHOR_LABEL_PREFIX).strip()
+    actor = full.select_one('a[data-view-name="feed-actor"]')
+    if not author and actor:
+        author = actor.get_text(" ", strip=True).split("•")[0].strip() or None
+
+    # The post URN only appears inside comment ids, so it's missing on posts without
+    # visible comments; then link the author instead.
+    activity = ACTIVITY_RE.search(html)
+    if activity:
+        url = f"https://www.linkedin.com/feed/update/urn:li:activity:{activity.group(1)}/"
+    else:
+        url = actor.get("href") if actor else None
+
+    return RawPost(source=SOURCE, external_id=token, url=url, author=author, text=text)

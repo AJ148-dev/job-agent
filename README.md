@@ -14,7 +14,7 @@ uv sync
 ollama pull qwen2.5:7b            # or set OLLAMA_MODEL to another pulled model
 cp .env.example .env              # fill in Telegram values (below)
 cp profile.example.yaml profile.yaml   # edit; put your resume next to it
-uv run jobagent login             # log in to LinkedIn once in the opened Chrome window
+uv run jobagent login             # log in once in the Chrome window it opens; closes itself on success
 uv run jobagent test-telegram
 ```
 

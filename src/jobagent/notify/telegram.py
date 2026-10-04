@@ -36,7 +36,8 @@ def format_job(post: RawPost, job: JobExtraction, match: MatchResult) -> str:
 
     links = []
     if post.url:
-        links.append(f'<a href="{escape(post.url, quote=True)}">Post</a>')
+        label = "Post" if "/feed/update/" in post.url else "Author"
+        links.append(f'<a href="{escape(post.url, quote=True)}">{label}</a>')
     if job.apply_url:
         links.append(f'<a href="{escape(job.apply_url, quote=True)}">Apply</a>')
     if job.contact_email:
