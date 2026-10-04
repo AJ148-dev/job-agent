@@ -1,7 +1,5 @@
-from jobagent.matching import excluded_keyword, final_score, passes_prefilter
-from jobagent.models import JobExtraction, LLMMatch
-
-LLM_OK = LLMMatch(score=85, reasons="fit")
+from jobagent.matching import excluded_keyword, passes_prefilter, too_much_experience
+from jobagent.models import JobExtraction
 
 
 def _job(**kw) -> JobExtraction:
@@ -19,22 +17,19 @@ def test_excluded_keyword(profile):
     assert excluded_keyword("Paid role", profile) is None
 
 
-def test_no_penalty_for_good_fit(profile):
-    result = final_score(_job(location="Bengaluru, India", min_years_experience=2, skills=["Python"]), LLM_OK, profile)
-    assert result.score == 85 and result.penalties == []
+def test_experience_gate(profile):  # profile.max_years == 3
+    assert too_much_experience(_job(min_years_experience=4), profile) is None
+    assert too_much_experience(_job(min_years_experience=5), profile) == "asks 5+ yrs (you: up to 3)"
 
 
-def test_penalties_stack(profile):
-    job = _job(location="London", min_years_experience=8, skills=["Java"])
-    result = final_score(job, LLM_OK, profile)
-    assert result.score == 85 - 25 - 20 - 15
-    assert len(result.penalties) == 3
+def test_unstated_experience_is_kept(profile):
+    assert too_much_experience(_job(), profile) is None
 
 
-def test_remote_skips_location_penalty(profile):
-    result = final_score(_job(location="London", work_mode="remote"), LLM_OK, profile)
-    assert result.score == 85
+def test_location_and_skills_never_filter(profile):
+    assert too_much_experience(_job(location="London", skills=["Cobol"]), profile) is None
 
 
-def test_unknown_fields_not_penalised(profile):
-    assert final_score(_job(), LLM_OK, profile).score == 85
+def test_null_strings_cleaned():
+    job = _job(company="null", skills=["null", "Python"], location="N/A")
+    assert job.company is None and job.location is None and job.skills == ["Python"]

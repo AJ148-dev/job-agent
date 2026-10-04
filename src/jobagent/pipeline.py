@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from jobagent.config import Profile
 from jobagent.llm.ollama import LLM
 from jobagent.llm.tasks import extract_job, judge_match
-from jobagent.matching import excluded_keyword, final_score, passes_prefilter
+from jobagent.matching import excluded_keyword, passes_prefilter, too_much_experience
 from jobagent.notify.telegram import Notifier, format_job
 from jobagent.sources.base import Source
 from jobagent.storage import Storage
@@ -18,6 +18,7 @@ class RunStats:
     duplicates: int = 0
     skipped: int = 0
     not_job: int = 0
+    too_senior: int = 0
     jobs: int = 0
     errors: int = 0
     notified: int = 0
@@ -64,7 +65,12 @@ def run_pipeline(
                     stats.not_job += 1
                     log.info("Not a job: %s | %s", post.external_id, job.reason)
                     continue
-                match = final_score(job, judge_match(llm, job, post.text, profile), profile)
+                if reason := too_much_experience(job, profile):
+                    store.save_post(post, "too_senior", reason)
+                    stats.too_senior += 1
+                    log.info("Too senior: %s at %s | %s", job.role, job.company, reason)
+                    continue
+                match = judge_match(llm, job, post.text, profile)
             except Exception as e:
                 log.exception("Analysis failed for %s", post.external_id)
                 store.save_post(post, "error", repr(e)[:500])
@@ -73,8 +79,7 @@ def run_pipeline(
             post_id = store.save_post(post, "job")
             store.save_job(post_id, job, match)
             stats.jobs += 1
-            log.info("Job: %s at %s -> score %d (llm %d) %s", job.role, job.company,
-                     match.score, match.llm_score, match.penalties or "")
+            log.info("Job: %s at %s -> score %d", job.role, job.company, match.score)
 
     for job_id, post, job, match in store.pending_notifications(profile.min_score):
         message = format_job(post, job, match)

@@ -41,10 +41,9 @@ until it closes. The Mac must be awake for scheduled runs.
 1. Skip if already seen (same post ID, or same normalised text).
 2. Drop if it contains an `exclude_keywords` entry, or has no job-related words (no LLM call).
 3. LLM: is this someone hiring? If yes, extract role, company, location, experience, skills, links.
-4. LLM: score 0-100 against your resume and preferences.
-5. Rule penalties: experience far above `max_years` (-25), location outside `locations` and not remote (-20),
-   none of `must_have_skills` listed (-15).
-6. Jobs with score >= `min_score` are sent. Failed sends are retried on the next run.
+4. Drop if it asks for more than `max_years + 1` years. Jobs that don't state experience are kept.
+5. LLM: fit score 0-100 against your resume and preferences, shown in the message.
+6. Jobs with score >= `min_score` (default 0, i.e. all) are sent. Failed sends are retried on the next run.
 
 ## LinkedIn account safety
 

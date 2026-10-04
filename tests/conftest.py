@@ -19,7 +19,6 @@ def profile(tmp_path: Path) -> Profile:
         max_years=3,
         must_have_skills=["Python"],
         exclude_keywords=["unpaid"],
-        min_score=70,
     )
 
 
@@ -45,6 +44,7 @@ class FakeLLM:
                 is_job_opportunity=is_job, reason="test",
                 role="Backend Engineer" if is_job else None, company="Acme",
                 location="Bangalore", skills=["Python"], summary="Backend role.",
+                min_years_experience=8 if "senior" in user.lower() else None,
             )
         if schema is LLMMatch:
             score = 40 if "weak" in user.lower() else 88

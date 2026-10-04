@@ -38,7 +38,7 @@ class Profile(BaseModel):
     must_have_skills: list[str] = []
     nice_to_have_skills: list[str] = []
     exclude_keywords: list[str] = []
-    min_score: int = 70
+    min_score: int = 0
     resume_text: str = ""
 
 

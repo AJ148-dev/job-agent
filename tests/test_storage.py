@@ -1,10 +1,10 @@
-from jobagent.models import JobExtraction, MatchResult
+from jobagent.models import JobExtraction, LLMMatch
 from jobagent.storage import Storage, content_hash
 from tests.conftest import make_post
 
 
-def _match(score: int) -> MatchResult:
-    return MatchResult(llm_score=score, score=score, matched_skills=[], missing_skills=[], reasons="r")
+def _match(score: int) -> LLMMatch:
+    return LLMMatch(score=score, reasons="r")
 
 
 def test_dedupe_by_external_id():

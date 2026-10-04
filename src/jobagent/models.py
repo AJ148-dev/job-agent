@@ -32,7 +32,12 @@ class JobExtraction(BaseModel):
     summary: str = Field("", description="One or two plain sentences describing the job.")
 
     @model_validator(mode="after")
-    def _fix_links(self) -> "JobExtraction":
+    def _clean(self) -> "JobExtraction":
+        # Small models sometimes emit the string "null" instead of a JSON null.
+        for name in ("role", "company", "location", "apply_url", "contact_email"):
+            if (getattr(self, name) or "").strip().lower() in ("", "null", "none", "n/a"):
+                setattr(self, name, None)
+        self.skills = [s for s in self.skills if s.strip().lower() not in ("", "null", "none", "n/a")]
         if self.apply_url and not self.apply_url.startswith("http"):
             if "@" in self.apply_url and not self.contact_email:
                 self.contact_email = self.apply_url
@@ -47,12 +52,3 @@ class LLMMatch(BaseModel):
     matched_skills: list[str] = Field(default_factory=list)
     missing_skills: list[str] = Field(default_factory=list)
     reasons: str
-
-
-class MatchResult(BaseModel):
-    llm_score: int
-    score: int
-    matched_skills: list[str]
-    missing_skills: list[str]
-    reasons: str
-    penalties: list[str] = Field(default_factory=list)

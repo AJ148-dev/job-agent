@@ -1,4 +1,4 @@
-from jobagent.models import JobExtraction, MatchResult
+from jobagent.models import JobExtraction, LLMMatch
 from jobagent.notify.telegram import format_job
 from jobagent.pipeline import run_pipeline
 from jobagent.storage import Storage
@@ -6,11 +6,12 @@ from tests.conftest import FakeLLM, FakeNotifier, FakeSource, make_post
 
 POSTS = [
     make_post("1", "We are hiring a Python backend engineer in Bangalore"),
-    make_post("2", "We are hiring, weak match role"),           # job, but low score
+    make_post("2", "We are hiring, weak match role"),           # job, low fit score: still sent
     make_post("3", "Excited to share I got a new job at Acme"),  # passes prefilter, LLM says not a job
     make_post("4", "Lovely sunset today"),                       # fails prefilter, no LLM call
     make_post("5", "Hiring an unpaid intern"),                   # excluded keyword
     make_post("6", "we are hiring a python backend engineer in bangalore!"),  # repost of 1
+    make_post("7", "We are hiring a senior engineer"),           # asks 8 yrs: dropped, no match call
 ]
 
 
@@ -18,14 +19,15 @@ def test_end_to_end_and_no_duplicates_on_rerun(profile):
     store, llm, notifier = Storage(":memory:"), FakeLLM(), FakeNotifier()
     stats = run_pipeline([FakeSource(POSTS)], store, llm, profile, notifier, limit=50)
 
-    assert (stats.fetched, stats.jobs, stats.not_job, stats.skipped, stats.duplicates) == (6, 2, 1, 2, 1)
-    assert stats.notified == 1 and len(notifier.sent) == 1
-    assert "Backend Engineer" in notifier.sent[0]
-    assert llm.calls == 5  # 2 jobs x (extract + match) + 1 not-job extract
+    assert (stats.fetched, stats.jobs, stats.not_job, stats.too_senior, stats.skipped, stats.duplicates) == \
+        (7, 2, 1, 1, 2, 1)
+    assert stats.notified == 2 and len(notifier.sent) == 2
+    assert "Experience: not mentioned" in notifier.sent[0]
+    assert llm.calls == 6  # 2 jobs x (extract + match) + not-job extract + too-senior extract
 
     stats2 = run_pipeline([FakeSource(POSTS)], store, llm, profile, notifier, limit=50)
-    assert stats2.duplicates == 6 and stats2.notified == 0
-    assert len(notifier.sent) == 1 and llm.calls == 5
+    assert stats2.duplicates == 7 and stats2.notified == 0
+    assert len(notifier.sent) == 2 and llm.calls == 6
 
 
 def test_failed_send_is_retried_next_run(profile):
@@ -59,7 +61,7 @@ def test_format_job_escapes_html():
     post = make_post("x", "t")
     job = JobExtraction(is_job_opportunity=True, reason="r", role="Dev <Lead>", company="A&B",
                         apply_url="https://a.com/?x=1&y=2")
-    match = MatchResult(llm_score=80, score=80, matched_skills=["Python"], missing_skills=[], reasons="ok")
+    match = LLMMatch(score=80, matched_skills=["Python"], reasons="ok")
     text = format_job(post, job, match)
     assert "Dev &lt;Lead&gt;" in text and "A&amp;B" in text
     assert 'href="https://a.com/?x=1&amp;y=2"' in text

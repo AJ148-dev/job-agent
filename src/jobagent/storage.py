@@ -4,7 +4,7 @@ import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 
-from jobagent.models import JobExtraction, MatchResult, RawPost
+from jobagent.models import JobExtraction, LLMMatch, RawPost
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS posts (
@@ -76,7 +76,7 @@ class Storage:
             ).fetchone()
         return row["id"]
 
-    def save_job(self, post_id: int, job: JobExtraction, match: MatchResult) -> int:
+    def save_job(self, post_id: int, job: JobExtraction, match: LLMMatch) -> int:
         with self.conn:
             row = self.conn.execute(
                 """INSERT INTO jobs (post_id, job_json, match_json, score) VALUES (?, ?, ?, ?)
@@ -88,7 +88,7 @@ class Storage:
             ).fetchone()
         return row["id"]
 
-    def pending_notifications(self, min_score: int) -> list[tuple[int, RawPost, JobExtraction, MatchResult]]:
+    def pending_notifications(self, min_score: int) -> list[tuple[int, RawPost, JobExtraction, LLMMatch]]:
         rows = self.conn.execute(
             """SELECT j.id, j.job_json, j.match_json, p.source, p.external_id, p.url, p.author, p.text
                FROM jobs j JOIN posts p ON p.id = j.post_id
@@ -102,7 +102,7 @@ class Storage:
                 RawPost(source=r["source"], external_id=r["external_id"], url=r["url"],
                         author=r["author"], text=r["text"]),
                 JobExtraction.model_validate_json(r["job_json"]),
-                MatchResult.model_validate_json(r["match_json"]),
+                LLMMatch.model_validate_json(r["match_json"]),
             )
             for r in rows
         ]

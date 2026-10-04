@@ -11,8 +11,8 @@ locations:                       # empty list = any location; list spelling vari
   - Remote
 remote_ok: true
 
-min_years: 0                     # your experience; jobs demanding much more are penalised
-max_years: 4
+min_years: 0                     # your experience
+max_years: 4                     # jobs asking more than max_years + 1 are dropped; unstated is kept
 
 must_have_skills:
   - Python
@@ -24,4 +24,4 @@ exclude_keywords:                # posts containing these are dropped
   - unpaid
   - commission only
 
-min_score: 70                    # only jobs scoring >= this are sent to Telegram
+min_score: 0                     # optional: only send jobs with fit score >= this

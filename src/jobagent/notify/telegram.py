@@ -4,7 +4,7 @@ from typing import Protocol
 
 import httpx
 
-from jobagent.models import JobExtraction, MatchResult, RawPost
+from jobagent.models import JobExtraction, LLMMatch, RawPost
 
 TELEGRAM_LIMIT = 4096
 SEND_INTERVAL_S = 1.0  # Telegram allows roughly one message per second per chat.
@@ -14,7 +14,7 @@ class Notifier(Protocol):
     def send(self, text: str) -> None: ...
 
 
-def format_job(post: RawPost, job: JobExtraction, match: MatchResult) -> str:
+def format_job(post: RawPost, job: JobExtraction, match: LLMMatch) -> str:
     title = escape(job.role or "Unknown role")
     company = escape(job.company or post.author or "Unknown company")
     lines = [f"<b>{title}</b> at <b>{company}</b>", f"Score: <b>{match.score}/100</b>"]
@@ -22,8 +22,8 @@ def format_job(post: RawPost, job: JobExtraction, match: MatchResult) -> str:
     where = ", ".join(x for x in (job.location, job.work_mode if job.work_mode != "unknown" else None) if x)
     if where:
         lines.append(f"Location: {escape(where)}")
-    if job.min_years_experience is not None:
-        lines.append(f"Experience: {job.min_years_experience}+ yrs")
+    years = job.min_years_experience
+    lines.append(f"Experience: {f'{years}+ yrs' if years is not None else 'not mentioned'}")
     if job.summary:
         lines.append(f"\n{escape(job.summary)}")
     lines.append(f"\n<i>Why:</i> {escape(match.reasons)}")
@@ -31,9 +31,6 @@ def format_job(post: RawPost, job: JobExtraction, match: MatchResult) -> str:
         lines.append(f"<i>Matched:</i> {escape(', '.join(match.matched_skills))}")
     if match.missing_skills:
         lines.append(f"<i>Missing:</i> {escape(', '.join(match.missing_skills))}")
-    if match.penalties:
-        lines.append(f"<i>Flags:</i> {escape('; '.join(match.penalties))}")
-
     links = []
     if post.url:
         label = "Post" if "/feed/update/" in post.url else "Author"
