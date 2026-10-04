@@ -15,6 +15,8 @@ SOURCE = "linkedin"
 
 POST_SELECTOR = '[data-view-name="feed-full-update"]'
 SEE_MORE_SELECTOR = 'button[data-testid="expandable-text-button"]'
+MENU_SELECTOR = '[aria-label^="Open control menu for post by"]'
+COPY_LINK_TEXT = "Copy link to post"
 # Run in the browser on a POST_SELECTOR element: the row holding the post (and its comments).
 ROW_JS = "e => (e.closest('[role=\"listitem\"]') || e).outerHTML"
 KEY_JS = "e => (e.closest('[componentkey*=\"FeedType_\"]') || e).getAttribute('componentkey') || ''"
