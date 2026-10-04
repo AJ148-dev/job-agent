@@ -31,8 +31,7 @@ def format_job(number: int, post: RawPost, job: JobExtraction, match: LLMMatch) 
 
     links = []
     if post.url:
-        label = "Open post" if "/feed/update/" in post.url else "Author profile"
-        links.append(f'<a href="{escape(post.url, quote=True)}">{label}</a>')
+        links.append(f'<a href="{escape(post.url, quote=True)}">Open post</a>')
     if job.apply_url:
         links.append(f'<a href="{escape(job.apply_url, quote=True)}">Apply</a>')
     if job.contact_email:

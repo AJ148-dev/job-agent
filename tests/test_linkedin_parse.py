@@ -19,7 +19,7 @@ def test_parses_hiring_post():
     assert post is not None
     assert post.external_id == "TOKENaaa111"
     assert post.author == "Neha Kapoor"
-    assert post.url == "https://www.linkedin.com/in/neha-test/"
+    assert post.url is None  # filled from network payloads by LinkedInSource
     assert post.text == "We're hiring SDE-1 at Acme Bengaluru!\n\nC++ / Java, strong DSA. Apply: https://acme.dev/jobs/1"
 
 

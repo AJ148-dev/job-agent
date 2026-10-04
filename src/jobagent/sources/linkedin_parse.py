@@ -71,12 +71,9 @@ def parse_post(html: str) -> RawPost | None:
     if not author and actor:
         author = actor.get_text(" ", strip=True).split("•")[0].strip() or None
 
-    # In the DOM the post URN only appears inside comment ids. LinkedInSource replaces this
-    # with the URN from network payloads when it can; the author profile is the last resort.
+    # In the DOM the post URN only appears inside comment ids; LinkedInSource fills in the
+    # rest from network payloads.
     activity = ACTIVITY_RE.search(html)
-    if activity:
-        url = post_url(f"urn:li:activity:{activity.group(1)}")
-    else:
-        url = actor.get("href") if actor else None
+    url = post_url(f"urn:li:activity:{activity.group(1)}") if activity else None
 
     return RawPost(source=SOURCE, external_id=token, url=url, author=author, text=text)
