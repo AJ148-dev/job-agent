@@ -1,0 +1,27 @@
+# Copy to profile.yaml and edit.
+resume_path: resume.pdf          # .pdf, .txt or .md
+
+target_roles:
+  - Backend Engineer
+  - AI Engineer
+
+locations:                       # empty list = any location; list spelling variants
+  - Bangalore
+  - Bengaluru
+  - Remote
+remote_ok: true
+
+min_years: 0                     # your experience; jobs demanding much more are penalised
+max_years: 4
+
+must_have_skills:
+  - Python
+nice_to_have_skills:
+  - LLM
+  - FastAPI
+
+exclude_keywords:                # posts containing these are dropped
+  - unpaid
+  - commission only
+
+min_score: 70                    # only jobs scoring >= this are sent to Telegram
