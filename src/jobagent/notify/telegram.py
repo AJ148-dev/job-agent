@@ -9,6 +9,7 @@ from jobagent.models import JobExtraction, LLMMatch, RawPost
 TELEGRAM_LIMIT = 4096
 EXCERPT_CHARS = 500  # keeps every job block well under TELEGRAM_LIMIT
 BLOCK_SEP = "\n\n"
+LONG_POLL_S = 50
 SEND_INTERVAL_S = 1.0  # Telegram allows roughly one message per second per chat.
 
 
@@ -68,17 +69,24 @@ class TelegramNotifier:
     def __init__(self, token: str, chat_id: str):
         if not token or not chat_id:
             raise ValueError("Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in .env")
-        self._url = f"https://api.telegram.org/bot{token}/sendMessage"
-        self._chat_id = chat_id
+        self._api = f"https://api.telegram.org/bot{token}"
+        self.chat_id = chat_id
 
-    def send(self, text: str) -> None:
-        resp = httpx.post(
-            self._url,
-            json={"chat_id": self._chat_id, "text": text, "parse_mode": "HTML",
-                  "disable_web_page_preview": True},
-            timeout=30,
-        )
+    def _call(self, method: str, http_timeout: float = 30, **params):
+        resp = httpx.post(f"{self._api}/{method}", json=params, timeout=http_timeout)
         body = resp.json()
         if not body.get("ok"):
             raise RuntimeError(f"Telegram error: {body.get('description', resp.text)}")
+        return body["result"]
+
+    def send(self, text: str) -> None:
+        self._call("sendMessage", chat_id=self.chat_id, text=text, parse_mode="HTML",
+                   disable_web_page_preview=True)
         time.sleep(SEND_INTERVAL_S)
+
+    def get_updates(self, offset: int | None, wait_s: int = LONG_POLL_S) -> list[dict]:
+        return self._call("getUpdates", http_timeout=wait_s + 10, offset=offset, timeout=wait_s,
+                          allowed_updates=["message"])
+
+    def set_commands(self, commands: dict[str, str]) -> None:
+        self._call("setMyCommands", commands=[{"command": c, "description": d} for c, d in commands.items()])

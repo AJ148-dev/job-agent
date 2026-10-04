@@ -29,9 +29,13 @@ Run all commands from the project directory (paths in `.env` are relative to it)
 ```bash
 uv run jobagent run --dry-run --limit 20   # analyse and log only; stores and sends nothing
 uv run jobagent run                        # one real pass
+uv run jobagent bot                        # listen on Telegram: send /run to the bot to start a pass
 uv run jobagent schedule                   # a pass every 8h (+-10%); minimum 6h
 uv run jobagent stats
 ```
+
+`jobagent bot` only obeys `TELEGRAM_CHAT_ID`, and skips a `/run` sent while it was offline or already running.
+It must be running on this Mac (awake) for `/run` to work, because it drives Chrome locally.
 
 Logs go to the terminal and `data/jobagent.log`. A Chrome window opens during each pass; leave it alone
 until it closes. The Mac must be awake for scheduled runs.

@@ -4,6 +4,7 @@ import time
 
 import typer
 
+from jobagent.bot import Bot
 from jobagent.config import Settings, load_profile
 from jobagent.llm.ollama import OllamaClient
 from jobagent.notify.telegram import TelegramNotifier
@@ -83,6 +84,15 @@ def schedule(
         delay = every_hours * 3600 * random.uniform(0.9, 1.1)
         log.info("Next run in %.1f hours", delay / 3600)
         time.sleep(delay)
+
+
+@app.command()
+def bot() -> None:
+    """Listen to your Telegram bot and run a pass whenever you send /run."""
+    settings = Settings()
+    _setup_logging(settings)
+    telegram = TelegramNotifier(settings.telegram_bot_token, settings.telegram_chat_id)
+    Bot(telegram, lambda: _run_once(settings, settings.max_posts_per_run, dry_run=False)).serve_forever()
 
 
 @app.command("test-telegram")
