@@ -6,7 +6,9 @@ import typer
 
 from jobagent.bot import Bot
 from jobagent.config import Settings, load_profile
+from jobagent.llm.fallback import FallbackLLM
 from jobagent.llm.gemini import GeminiClient
+from jobagent.llm.groq import GroqClient
 from jobagent.llm.ollama import OllamaClient
 from jobagent.notify.telegram import TelegramNotifier
 from jobagent.pipeline import RunStats, run_pipeline
@@ -33,9 +35,12 @@ def _linkedin(settings: Settings) -> LinkedInSource:
     return LinkedInSource(settings.browser_profile_dir, settings.data_dir / "debug", settings.browser_channel)
 
 
-def _llm(settings: Settings) -> OllamaClient | GeminiClient:
+def _llm(settings: Settings) -> OllamaClient | GeminiClient | FallbackLLM:
     if settings.llm_provider == "gemini":
-        return GeminiClient(settings.gemini_api_key, settings.gemini_model)
+        gemini = GeminiClient(settings.gemini_api_key, settings.gemini_model)
+        if not settings.groq_api_key:
+            return gemini
+        return FallbackLLM(gemini, GroqClient(settings.groq_api_key, settings.groq_model))
     if settings.llm_provider == "ollama":
         return OllamaClient(settings.ollama_url, settings.ollama_model)
     raise ValueError(f"LLM_PROVIDER must be 'ollama' or 'gemini', not {settings.llm_provider!r}")

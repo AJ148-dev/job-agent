@@ -26,6 +26,9 @@ https://aistudio.google.com/apikey). On the free tier Google may use your prompt
 resume and the posts, to improve its products. To stay fully local instead, set `LLM_PROVIDER=ollama`
 and run `ollama pull qwen2.5:7b` (needs ~5 GB RAM and runs the laptop hot).
 
+Optional backup: set `GROQ_API_KEY` (free at https://console.groq.com/keys). If a Gemini request fails
+or the daily free limit is reached, that request and the rest of the run use Groq (`GROQ_MODEL`).
+
 Run all commands from the project directory (paths in `.env` are relative to it).
 
 ## Usage

@@ -57,6 +57,8 @@ class GeminiClient:
         }
         for attempt in range(1, self.attempts + 1):
             resp = self._post(payload)
+            if resp.status_code == 429 and "PerDay" in resp.text:
+                raise RuntimeError("Gemini daily free-tier limit reached")
             if resp.status_code == 429 or resp.status_code >= 500:
                 match = RETRY_DELAY_RE.search(resp.text)
                 delay = float(match.group(1)) + 1 if match else 5 * 2 ** attempt

@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     ollama_model: str = "qwen2.5:7b"
     gemini_api_key: str = ""
     gemini_model: str = "gemini-3.5-flash-lite"
+    groq_api_key: str = ""  # if set, Groq backs up Gemini when it fails or hits its limit
+    groq_model: str = "openai/gpt-oss-120b"
     data_dir: Path = Path("data")
     profile_path: Path = Path("profile.yaml")
     max_posts_per_run: int = 60
