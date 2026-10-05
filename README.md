@@ -11,8 +11,7 @@ Everything runs locally and costs nothing.
 
 ```bash
 uv sync
-ollama pull qwen2.5:7b            # or set OLLAMA_MODEL to another pulled model
-cp .env.example .env              # fill in Telegram values (below)
+cp .env.example .env              # fill in Telegram values (below) and GEMINI_API_KEY
 cp profile.example.yaml profile.yaml   # edit; put your resume next to it
 uv run jobagent login             # log in once in the Chrome window it opens; closes itself on success
 uv run jobagent test-telegram
@@ -21,6 +20,11 @@ uv run jobagent test-telegram
 Telegram: message @BotFather, `/newbot`, copy the token into `TELEGRAM_BOT_TOKEN`. Send any
 message to your new bot, then open `https://api.telegram.org/bot<TOKEN>/getUpdates` and copy
 `result[0].message.chat.id` into `TELEGRAM_CHAT_ID`.
+
+LLM: by default posts are analysed with Gemini (`LLM_PROVIDER=gemini`; free key at
+https://aistudio.google.com/apikey). On the free tier Google may use your prompts, which include your
+resume and the posts, to improve its products. To stay fully local instead, set `LLM_PROVIDER=ollama`
+and run `ollama pull qwen2.5:7b` (needs ~5 GB RAM and runs the laptop hot).
 
 Run all commands from the project directory (paths in `.env` are relative to it).
 

@@ -11,8 +11,11 @@ class Settings(BaseSettings):
 
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
+    llm_provider: str = "ollama"  # "ollama" (local) or "gemini" (Google API)
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "qwen2.5:7b"
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-3.5-flash-lite"
     data_dir: Path = Path("data")
     profile_path: Path = Path("profile.yaml")
     max_posts_per_run: int = 60

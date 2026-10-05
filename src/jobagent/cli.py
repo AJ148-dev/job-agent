@@ -6,6 +6,7 @@ import typer
 
 from jobagent.bot import Bot
 from jobagent.config import Settings, load_profile
+from jobagent.llm.gemini import GeminiClient
 from jobagent.llm.ollama import OllamaClient
 from jobagent.notify.telegram import TelegramNotifier
 from jobagent.pipeline import RunStats, run_pipeline
@@ -32,9 +33,17 @@ def _linkedin(settings: Settings) -> LinkedInSource:
     return LinkedInSource(settings.browser_profile_dir, settings.data_dir / "debug", settings.browser_channel)
 
 
+def _llm(settings: Settings) -> OllamaClient | GeminiClient:
+    if settings.llm_provider == "gemini":
+        return GeminiClient(settings.gemini_api_key, settings.gemini_model)
+    if settings.llm_provider == "ollama":
+        return OllamaClient(settings.ollama_url, settings.ollama_model)
+    raise ValueError(f"LLM_PROVIDER must be 'ollama' or 'gemini', not {settings.llm_provider!r}")
+
+
 def _run_once(settings: Settings, limit: int, dry_run: bool) -> RunStats:
     profile = load_profile(settings.profile_path)
-    llm = OllamaClient(settings.ollama_url, settings.ollama_model)
+    llm = _llm(settings)
     llm.check()
     notifier = None if dry_run else TelegramNotifier(settings.telegram_bot_token, settings.telegram_chat_id)
     # Dry runs use a throwaway DB so they never mark anything as seen or sent.
